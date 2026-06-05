@@ -12,38 +12,14 @@ echo "Initial Database User: $( [[ -n ${POSTGRES_USER:-${DB_USER:-}} ]] && echo 
 # Load environment variables from the appropriate .env file
 if [ -f ".env.${APP_ENV}" ]; then
     echo "Loading environment from .env.${APP_ENV}"
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        # Skip comments and empty lines
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "$line" ]] && continue
-
-        # Extract the key
-        key=$(echo "$line" | cut -d '=' -f 1)
-
-        # Only set if not already set in environment
-        if [[ -z "${!key}" ]]; then
-            export "$line"
-        else
-            echo "Keeping existing value for $key"
-        fi
-    done <".env.${APP_ENV}"
+    set -a
+    source ".env.${APP_ENV}"
+    set +a
 elif [ -f ".env" ]; then
     echo "Loading environment from .env"
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        # Skip comments and empty lines
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "$line" ]] && continue
-
-        # Extract the key
-        key=$(echo "$line" | cut -d '=' -f 1)
-
-        # Only set if not already set in environment
-        if [[ -z "${!key}" ]]; then
-            export "$line"
-        else
-            echo "Keeping existing value for $key"
-        fi
-    done <".env"
+    set -a
+    source ".env"
+    set +a
 else
     echo "Warning: No .env file found. Using system environment variables."
 fi
@@ -81,6 +57,11 @@ echo "Debug Mode: ${DEBUG:-false}"
 
 # Run database migrations if necessary
 # e.g., alembic upgrade head
+
+# Run database migrations
+echo "Running database migrations..."
+/app/.venv/bin/alembic upgrade head
+echo "Database migrations completed."
 
 # Execute the CMD
 exec "$@"

@@ -16,8 +16,25 @@ from app.core.config import (
 )
 from app.core.logging import logger
 
-_TOKEN_LIMIT: Dict[str, Any] = {"max_completion_tokens": settings.MAX_TOKENS}
+_TOKEN_LIMIT: Dict[str, Any] = {"max_completion_tokens": settings.MAX_COMPLETION_TOKENS}
 _API_KEY = SecretStr(settings.OPENAI_API_KEY)
+
+
+def _normalize_model_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize legacy model kwargs to OpenAI chat-completions parameters."""
+    normalized = dict(kwargs)
+    model_kwargs = dict(normalized.pop("model_kwargs", {}) or {})
+
+    max_completion_tokens = normalized.pop("max_completion_tokens", None)
+    max_tokens = normalized.pop("max_tokens", None)
+    if max_completion_tokens is not None:
+        model_kwargs["max_completion_tokens"] = max_completion_tokens
+    elif max_tokens is not None:
+        model_kwargs["max_completion_tokens"] = max_tokens
+
+    if model_kwargs:
+        normalized["model_kwargs"] = model_kwargs
+    return normalized
 
 
 class LLMRegistry:
@@ -38,21 +55,30 @@ class LLMRegistry:
             ),
         },
         {
+            "name": "gpt-5-nano",
+            "llm": ChatOpenAI(
+                model="gpt-5-nano",
+                api_key=_API_KEY,
+                model_kwargs=_TOKEN_LIMIT,
+                reasoning={"effort": "low"},
+            ),
+        },
+        {
             "name": "gpt-5.4",
             "llm": ChatOpenAI(
-                model="gpt-5",
+                model="gpt-5.4",
                 api_key=_API_KEY,
                 model_kwargs=_TOKEN_LIMIT,
                 reasoning={"effort": "medium"},
             ),
         },
         {
-            "name": "gpt-5.4-nano",
+            "name": "gpt-5.5",
             "llm": ChatOpenAI(
-                model="gpt-5.4-nano",
+                model="gpt-5.5",
                 api_key=_API_KEY,
                 model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "low"},
+                reasoning={"effort": "medium"},
             ),
         },
         {
@@ -92,8 +118,13 @@ class LLMRegistry:
             raise ValueError(f"model '{model_name}' not found in registry. available models: {available}")
 
         if kwargs:
-            logger.debug("creating_llm_with_custom_args", model_name=model_name, custom_args=list(kwargs.keys()))
-            return ChatOpenAI(model=model_name, api_key=_API_KEY, **kwargs)
+            normalized_kwargs = _normalize_model_kwargs(kwargs)
+            logger.debug(
+                "creating_llm_with_custom_args",
+                model_name=model_name,
+                custom_args=list(normalized_kwargs.keys()),
+            )
+            return ChatOpenAI(model=model_name, api_key=_API_KEY, **normalized_kwargs)
 
         logger.debug("using_default_llm_instance", model_name=model_name)
         return model_entry["llm"]
