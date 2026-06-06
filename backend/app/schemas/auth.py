@@ -90,6 +90,20 @@ class UserCreate(BaseModel):
         return v
 
 
+class UserLogin(BaseModel):
+    """Request model for user login.
+
+    Attributes:
+        email: User's email address
+        password: User's password
+        grant_type: OAuth-compatible grant type, defaults to password
+    """
+
+    email: EmailStr = Field(..., description="User's email address")
+    password: SecretStr = Field(..., description="User's password")
+    grant_type: str = Field(default="password", description="OAuth grant type")
+
+
 class UserResponse(BaseResponse):
     """Response model for user operations.
 

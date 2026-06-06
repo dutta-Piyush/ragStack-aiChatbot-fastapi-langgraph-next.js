@@ -31,6 +31,7 @@ from app.schemas.auth import (
     SessionResponse,
     TokenResponse,
     UserCreate,
+    UserLogin,
     UserResponse,
 )
 from app.services.database import DatabaseService
@@ -47,6 +48,26 @@ from app.utils.sanitization import (
 router = APIRouter()
 security = HTTPBearer()
 db_service = DatabaseService()
+
+
+async def parse_login_request(request: Request) -> UserLogin:
+    """Parse login credentials from JSON or form-encoded request bodies."""
+    content_type = request.headers.get("content-type", "")
+
+    try:
+        if "application/json" in content_type:
+            payload = await request.json()
+        else:
+            form = await request.form()
+            payload = dict(form)
+
+        return UserLogin.model_validate(payload)
+    except Exception as exc:
+        logger.exception("login_request_parse_failed", error_type=type(exc).__name__)
+        raise HTTPException(
+            status_code=422,
+            detail="Login request must include email and password",
+        )
 
 
 async def get_current_user(
@@ -198,9 +219,7 @@ async def register_user(request: Request, user_data: UserCreate):
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["login"][0])
-async def login(
-    request: Request, email: str = Form(...), password: str = Form(...), grant_type: str = Form(default="password")
-):
+async def login(request: Request, credentials: UserLogin = Depends(parse_login_request)):
     """Login a user.
 
     Args:
@@ -217,9 +236,9 @@ async def login(
     """
     try:
         # Sanitize inputs
-        email = sanitize_string(email)
-        password = sanitize_string(password)
-        grant_type = sanitize_string(grant_type)
+        email = sanitize_email(credentials.email)
+        password = sanitize_string(credentials.password.get_secret_value())
+        grant_type = sanitize_string(credentials.grant_type)
 
         # Verify grant type
         if grant_type != "password":

@@ -19,7 +19,7 @@ class MemoryService:
 
     async def _get_memory(self) -> AsyncMemory:
         if self._memory is None:
-            self._memory = await AsyncMemory.from_config(
+            self._memory = AsyncMemory.from_config(
                 config_dict={
                     "vector_store": {
                         "provider": "pgvector",
@@ -73,7 +73,7 @@ class MemoryService:
                 return cached
 
             memory = await self._get_memory()
-            results = await memory.search(user_id=str(user_id), query=query)
+            results = await memory.search(query=query, filters={"user_id": str(user_id)})
             result = "\n".join([f"* {r['memory']}" for r in results["results"]])
 
             # Cache successful results
