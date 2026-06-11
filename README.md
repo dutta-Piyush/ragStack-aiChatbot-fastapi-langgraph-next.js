@@ -59,7 +59,7 @@ Prometheus ───────▶ Grafana
 ```
 
 ## RAG
-
+```text
 User Question
    ↓
 Validate Request
@@ -75,3 +75,4 @@ Generate Answer
 Stream Response
    ↓
 Save Conversation
+```
