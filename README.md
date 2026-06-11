@@ -56,9 +56,9 @@ LangGraph RAG Workflow      Chat Sessions
       └── Persist conversation
 
 Prometheus ───────▶ Grafana
+```
 
-
-## RAG Workflow
+## RAG
 
 User Question
    ↓
